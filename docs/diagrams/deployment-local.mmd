@@ -1,0 +1,13 @@
+%% Local development with Docker Compose
+flowchart LR
+  DEV["Developer browser<br/>http://localhost:3000"]
+  SW["Swagger UI<br/>http://localhost:8080/swagger-ui.html"]
+  subgraph Compose["docker compose (project: dms)"]
+    FE["frontend<br/>next dev or standalone<br/>port 3000<br/>API_PROXY_TARGET=http://backend:8080"]
+    BE["backend<br/>Spring profile dev<br/>port 8080<br/>Flyway: db/migration + db/seed"]
+    DB[("db<br/>postgres:16-alpine<br/>port 5432<br/>volume dms-pgdata")]
+  end
+  DEV -->|"pages + /api/* (same origin)"| FE
+  FE -->|"rewrite /api/*"| BE
+  SW --> BE
+  BE -->|"jdbc:postgresql://db:5432/dms"| DB

@@ -1,0 +1,84 @@
+%% ERD - prescriptions, medicines and dispensing (all columns); attribution FKs omitted
+%% GENERATED from the V1 migration by scripts/gen_erd.py - do not edit by hand
+erDiagram
+  prescriptions {
+    uuid id PK "NOT NULL"
+    bigint prescription_number UK "NOT NULL"
+    uuid consultation_id FK "NOT NULL"
+    uuid patient_id FK "NOT NULL"
+    varchar status "NOT NULL"
+    varchar notes
+    timestamptz submitted_at "NOT NULL"
+    timestamptz started_at
+    uuid started_by FK
+    timestamptz cancelled_at
+    uuid cancelled_by FK
+    varchar cancel_reason
+    uuid supersedes_prescription_id FK,UK
+    timestamptz updated_at "NOT NULL"
+    bigint version "NOT NULL"
+  }
+  prescription_items {
+    uuid id PK "NOT NULL"
+    uuid prescription_id FK "NOT NULL"
+    smallint line_number "NOT NULL"
+    uuid medicine_id FK
+    varchar medicine_name "NOT NULL"
+    varchar strength
+    varchar dosage_form
+    varchar dose "NOT NULL"
+    varchar frequency "NOT NULL"
+    smallint duration_days
+    numeric quantity "NOT NULL"
+    varchar quantity_unit "NOT NULL"
+    varchar instructions
+  }
+  medicines {
+    uuid id PK "NOT NULL"
+    varchar name "NOT NULL"
+    varchar strength
+    varchar dosage_form "NOT NULL"
+    bool active "NOT NULL"
+    timestamptz created_at "NOT NULL"
+    uuid created_by FK "NOT NULL"
+    timestamptz updated_at "NOT NULL"
+    uuid updated_by FK "NOT NULL"
+    bigint version "NOT NULL"
+  }
+  dispensings {
+    uuid id PK "NOT NULL"
+    uuid prescription_id FK,UK "NOT NULL"
+    uuid pharmacist_id FK "NOT NULL"
+    timestamptz dispensed_at "NOT NULL"
+    varchar outcome "NOT NULL"
+    varchar notes
+  }
+  dispensing_items {
+    uuid id PK "NOT NULL"
+    uuid dispensing_id FK "NOT NULL"
+    uuid prescription_id FK "NOT NULL"
+    uuid prescription_item_id FK,UK "NOT NULL"
+    numeric quantity_dispensed "NOT NULL"
+    varchar status "NOT NULL"
+    varchar note
+  }
+  consultations {
+    uuid id PK "NOT NULL"
+  }
+  patients {
+    uuid id PK "NOT NULL"
+  }
+  users {
+    uuid id PK "NOT NULL"
+  }
+  users ||--o{ consultations : "doctor_id"
+  patients ||--o{ consultations : "patient_id"
+  dispensings ||--o{ dispensing_items : "dispensing_id,prescription_id"
+  prescription_items ||--o{ dispensing_items : "prescription_id,prescription_item_id"
+  users ||--o{ dispensings : "pharmacist_id"
+  prescriptions ||--o| dispensings : "prescription_id"
+  medicines |o--o{ prescription_items : "medicine_id"
+  prescriptions ||--o{ prescription_items : "prescription_id"
+  consultations ||--o{ prescriptions : "consultation_id,patient_id"
+  patients ||--o{ prescriptions : "patient_id"
+  prescriptions |o--o| prescriptions : "supersedes_prescription_id"

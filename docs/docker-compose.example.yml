@@ -1,0 +1,71 @@
+# docker-compose.yml - LOCAL DEVELOPMENT ONLY (repository root)
+# Usage: cp .env.example .env && docker compose up --build
+name: dms
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"            # remove in shared environments
+    volumes:
+      - dms-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SERVER_PORT: ${SERVER_PORT}
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_ISSUER: ${APP_JWT_ISSUER}
+      APP_JWT_ACCESS_TOKEN_TTL: ${APP_JWT_ACCESS_TOKEN_TTL}
+      APP_JWT_REFRESH_TOKEN_TTL: ${APP_JWT_REFRESH_TOKEN_TTL}
+      APP_REFRESH_COOKIE_SECURE: ${APP_REFRESH_COOKIE_SECURE}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      APP_SWAGGER_ENABLED: ${APP_SWAGGER_ENABLED}
+      APP_RATE_LIMIT_LOGIN_PER_MINUTE: ${APP_RATE_LIMIT_LOGIN_PER_MINUTE}
+      APP_RATE_LIMIT_PUBLIC_PER_MINUTE: ${APP_RATE_LIMIT_PUBLIC_PER_MINUTE}
+      APP_RETENTION_QUEUE_PII_DAYS: ${APP_RETENTION_QUEUE_PII_DAYS}
+      SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_PATH: ${NEXT_PUBLIC_API_BASE_PATH}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        NEXT_PUBLIC_QUEUE_POLL_INTERVAL_MS: ${NEXT_PUBLIC_QUEUE_POLL_INTERVAL_MS}
+        NEXT_PUBLIC_PRESCRIPTION_POLL_INTERVAL_MS: ${NEXT_PUBLIC_PRESCRIPTION_POLL_INTERVAL_MS}
+        NEXT_PUBLIC_IDLE_TIMEOUT_MINUTES: ${NEXT_PUBLIC_IDLE_TIMEOUT_MINUTES}
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_PROXY_TARGET: http://backend:8080   # server-side only; overrides the host value in .env
+    ports:
+      - "3000:3000"
+
+volumes:
+  dms-pgdata:

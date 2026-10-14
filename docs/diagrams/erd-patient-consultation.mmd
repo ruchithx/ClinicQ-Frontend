@@ -1,0 +1,52 @@
+%% ERD - patients and consultations (all columns); attribution FKs omitted
+%% GENERATED from the V1 migration by scripts/gen_erd.py - do not edit by hand
+erDiagram
+  patients {
+    uuid id PK "NOT NULL"
+    varchar patient_number UK "NOT NULL"
+    varchar full_name "NOT NULL"
+    varchar sex "NOT NULL"
+    date date_of_birth "NOT NULL"
+    bool date_of_birth_estimated "NOT NULL"
+    varchar phone_number
+    varchar address
+    varchar known_allergies
+    timestamptz created_at "NOT NULL"
+    uuid created_by FK "NOT NULL"
+    timestamptz updated_at "NOT NULL"
+    uuid updated_by FK "NOT NULL"
+    bigint version "NOT NULL"
+  }
+  consultations {
+    uuid id PK "NOT NULL"
+    uuid patient_id FK "NOT NULL"
+    uuid doctor_id FK "NOT NULL"
+    uuid queue_entry_id FK,UK
+    timestamptz consultation_at "NOT NULL"
+    varchar presenting_complaint
+    varchar clinical_notes
+    timestamptz created_at "NOT NULL"
+  }
+  consultation_diagnoses {
+    uuid id PK "NOT NULL"
+    uuid consultation_id FK "NOT NULL"
+    smallint line_number "NOT NULL"
+    varchar condition_text "NOT NULL"
+    varchar icd10_code
+  }
+  prescriptions {
+    uuid id PK "NOT NULL"
+  }
+  queue_entries {
+    uuid id PK "NOT NULL"
+  }
+  users {
+    uuid id PK "NOT NULL"
+  }
+  consultations ||--o{ consultation_diagnoses : "consultation_id"
+  users ||--o{ consultations : "doctor_id"
+  patients ||--o{ consultations : "patient_id"
+  queue_entries |o--o| consultations : "queue_entry_id"
+  consultations ||--o{ prescriptions : "consultation_id,patient_id"
+  patients ||--o{ prescriptions : "patient_id"
+  prescriptions |o--o| prescriptions : "supersedes_prescription_id"

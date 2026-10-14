@@ -1,0 +1,38 @@
+%% Backend component diagram (packages of com.dispensary.dms)
+flowchart TB
+  subgraph Web["Web layer (per request)"]
+    direction LR
+    F1["RequestIdFilter<br/>X-Request-Id, MDC"] --> F2["RateLimitFilter<br/>login, public"] --> SC["Spring Security chain<br/>JWT bearer auth,<br/>PasswordChangeRequiredFilter"] --> C["REST controllers<br/>@PreAuthorize per operation<br/>DTO validation (@Valid)"]
+    EH["GlobalExceptionHandler<br/>ProblemDetail + ErrorCode"]
+  end
+  subgraph App["Application layer - @Transactional services"]
+    direction LR
+    S1["auth / user<br/>AuthService, RefreshTokenService,<br/>UserService, BootstrapAdminRunner"]
+    S2["patient / consultation<br/>PatientService, MedicalHistoryService,<br/>ConsultationService"]
+    S3["prescription / pharmacy / medicine<br/>PrescriptionService + StateMachine,<br/>DispensingService, MedicineService"]
+    S4["queue<br/>QueueSessionService, QueueEntryService<br/>+ StateMachine, PublicQueueService"]
+  end
+  subgraph Cross["Cross-cutting services"]
+    direction LR
+    X1["IdempotencyService"]
+    X2["AuditService"]
+    X3["BusinessClock"]
+    X4["Scheduled jobs<br/>RetentionJob, SessionAutoCloseJob"]
+  end
+  subgraph Data["Persistence"]
+    direction LR
+    R["Spring Data repositories<br/>@Lock(PESSIMISTIC_WRITE) finders,<br/>projection and batch queries"]
+    E["JPA entities + enums"]
+    M["MapStruct mappers<br/>entity -> DTO"]
+  end
+  DB[("PostgreSQL 16")]
+  C -->|"calls"| App
+  C -. "exceptions" .-> EH
+  App -->|"uses"| Cross
+  App -->|"reads / writes"| R
+  App --> M
+  X4 --> R
+  X1 --> R
+  X2 --> R
+  R --> E
+  R -->|"JDBC"| DB

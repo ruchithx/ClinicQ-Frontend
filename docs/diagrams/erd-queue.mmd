@@ -1,0 +1,56 @@
+%% ERD - queue sessions and bookings (all columns); attribution FKs omitted
+%% GENERATED from the V1 migration by scripts/gen_erd.py - do not edit by hand
+erDiagram
+  queue_sessions {
+    uuid id PK "NOT NULL"
+    date session_date "NOT NULL"
+    varchar name "NOT NULL"
+    uuid assigned_doctor_id FK
+    varchar status "NOT NULL"
+    int last_issued_number "NOT NULL"
+    int last_called_number
+    timestamptz opened_at
+    uuid opened_by FK
+    timestamptz closed_at
+    uuid closed_by FK
+    timestamptz created_at "NOT NULL"
+    uuid created_by FK "NOT NULL"
+    timestamptz updated_at "NOT NULL"
+    bigint version "NOT NULL"
+  }
+  queue_entries {
+    uuid id PK "NOT NULL"
+    uuid queue_session_id FK "NOT NULL"
+    int queue_number "NOT NULL"
+    varchar status "NOT NULL"
+    varchar channel "NOT NULL"
+    varchar patient_name
+    varchar contact_phone
+    varchar notes
+    timestamptz booked_at "NOT NULL"
+    uuid booked_by FK "NOT NULL"
+    timestamptz called_at
+    uuid called_by FK
+    timestamptz completed_at
+    uuid completed_by FK
+    timestamptz skipped_at
+    uuid skipped_by FK
+    varchar skip_reason
+    timestamptz cancelled_at
+    uuid cancelled_by FK
+    varchar cancel_reason
+    smallint requeue_count "NOT NULL"
+    timestamptz anonymized_at
+    timestamptz updated_at "NOT NULL"
+    bigint version "NOT NULL"
+  }
+  consultations {
+    uuid id PK "NOT NULL"
+  }
+  users {
+    uuid id PK "NOT NULL"
+  }
+  users ||--o{ consultations : "doctor_id"
+  queue_entries |o--o| consultations : "queue_entry_id"
+  queue_sessions ||--o{ queue_entries : "queue_session_id"
+  users |o--o{ queue_sessions : "assigned_doctor_id"

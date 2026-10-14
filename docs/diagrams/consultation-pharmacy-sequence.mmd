@@ -1,0 +1,69 @@
+%% Workflows A/B: consultation to pharmacy dispensing
+sequenceDiagram
+  autonumber
+  actor D as Doctor
+  participant FE as Next.js (doctor UI)
+  participant API as Spring Boot API
+  participant DB as PostgreSQL
+  actor P as Pharmacist
+  participant FP as Next.js (pharmacist UI)
+
+  %% ---- body ----
+  D->>FE: Enter patient number
+  FE->>API: GET /patients/by-number/{n}
+  API->>DB: SELECT patient WHERE patient_number = upper(n)
+  alt patient exists
+    API-->>FE: 200 PatientResponse (+ audit PATIENT_VIEWED)
+    FE->>API: GET /patients/{id}/medical-history?page=0
+    API->>DB: page of consultations + batch loads (no N+1)
+    API-->>FE: 200 MedicalHistoryResponse
+  else not found (Workflow B)
+    API-->>FE: 404 PATIENT_NOT_FOUND
+    D->>FE: Fill registration form
+    FE->>API: POST /patients (Idempotency-Key K1)
+    API->>DB: BEGIN, INSERT idempotency_keys, INSERT patients, INSERT audit, COMMIT
+    API-->>FE: 201 PatientResponse (409 DUPLICATE_PATIENT_NUMBER if taken)
+  end
+  %% ---- part 2 ----
+  D->>FE: Diagnoses, notes, medicines (1..30 items)
+  FE->>API: POST /consultations (Idempotency-Key K2)
+  activate API
+  API->>DB: BEGIN
+  API->>DB: INSERT idempotency_keys (blocks if duplicate in flight)
+  API->>DB: validate patient, medicines active, queue entry
+  API->>DB: INSERT consultations, consultation_diagnoses
+  API->>DB: INSERT prescriptions (status PENDING), prescription_items
+  API->>DB: INSERT audit_events, COMMIT
+  API-->>FE: 201 ConsultationResponse (RX number, PENDING)
+  deactivate API
+  Note over FE,API: Any error rolls back everything. Form data stays in memory, retry reuses K2.
+
+  %% ---- part 3 ----
+  loop every 10 s while tab visible
+    FP->>API: GET /prescriptions?status=PENDING&status=IN_PROGRESS
+    API-->>FP: 200 PrescriptionSummaryPage (oldest first)
+  end
+  P->>FP: Open RX
+  FP->>API: GET /prescriptions/{id}
+  API-->>FP: 200 items + minimal patient data + allergies
+  P->>FP: Start preparing
+  FP->>API: POST /prescriptions/{id}/start
+  API->>DB: SELECT ... FOR UPDATE, PENDING -> IN_PROGRESS
+  API-->>FP: 200 IN_PROGRESS
+  P->>FP: Confirm quantities and "Mark as Dispensed"
+  FP->>API: POST /prescriptions/{id}/dispense (Idempotency-Key K3)
+  activate API
+  API->>DB: BEGIN, INSERT idempotency_keys, SELECT prescription FOR UPDATE
+  API->>DB: check status in (PENDING, IN_PROGRESS) and item rules
+  API->>DB: INSERT dispensings (UNIQUE prescription_id), dispensing_items
+  API->>DB: UPDATE prescriptions SET status = DISPENSED, INSERT audit, COMMIT
+  API-->>FP: 200 DISPENSED (outcome FULL or PARTIAL)
+  deactivate API
+  Note over FP,API: Double click with K3 replays 200. Another pharmacist gets 409 INVALID_STATUS_TRANSITION.
+
+  %% ---- part 4 ----
+  loop every 10 s on consultation screen until terminal
+    FE->>API: GET /consultations/{id}
+    API-->>FE: 200 prescription status DISPENSED + dispensing details
+  end
+  FE-->>D: "Dispensed by Kamal Silva at 10:15 (partial)"

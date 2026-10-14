@@ -1,0 +1,10 @@
+%% Queue session lifecycle (queue_sessions.status)
+stateDiagram-v2
+  direction TB
+  [*] --> SCHEDULED: create (date today..+30)
+  SCHEDULED --> OPEN: open (on session date)
+  SCHEDULED --> CLOSED: close
+  OPEN --> CLOSED: close (force if active entries) /<br/>nightly auto-close
+  CLOSED --> [*]
+  note right of SCHEDULED: bookings allowed, no calls
+  note right of OPEN: bookings and calls allowed

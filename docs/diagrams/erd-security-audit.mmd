@@ -1,0 +1,73 @@
+%% ERD - users, tokens, idempotency and audit (all columns); attribution FKs omitted
+%% GENERATED from the V1 migration by scripts/gen_erd.py - do not edit by hand
+erDiagram
+  users {
+    uuid id PK "NOT NULL"
+    varchar username UK "NOT NULL"
+    varchar password_hash "NOT NULL"
+    varchar full_name "NOT NULL"
+    varchar professional_registration_number
+    bool enabled "NOT NULL"
+    bool must_change_password "NOT NULL"
+    int failed_login_count "NOT NULL"
+    timestamptz locked_until
+    timestamptz last_login_at
+    timestamptz password_changed_at
+    timestamptz created_at "NOT NULL"
+    uuid created_by FK
+    timestamptz updated_at "NOT NULL"
+    bigint version "NOT NULL"
+  }
+  user_roles {
+    uuid user_id PK,FK "NOT NULL"
+    varchar role PK "NOT NULL"
+  }
+  refresh_tokens {
+    uuid id PK "NOT NULL"
+    uuid user_id FK "NOT NULL"
+    uuid family_id "NOT NULL"
+    char token_hash UK "NOT NULL"
+    timestamptz issued_at "NOT NULL"
+    timestamptz expires_at "NOT NULL"
+    timestamptz rotated_at
+    uuid replaced_by_id FK
+    timestamptz revoked_at
+    varchar revoke_reason
+    inet created_ip
+    varchar user_agent
+  }
+  idempotency_keys {
+    uuid id PK "NOT NULL"
+    uuid user_id FK "NOT NULL"
+    varchar idempotency_key "NOT NULL"
+    varchar operation "NOT NULL"
+    char request_hash "NOT NULL"
+    uuid resource_id
+    smallint response_status
+    timestamptz created_at "NOT NULL"
+    timestamptz expires_at "NOT NULL"
+  }
+  audit_events {
+    uuid id PK "NOT NULL"
+    timestamptz occurred_at "NOT NULL"
+    uuid actor_user_id FK
+    varchar actor_username
+    varchar action "NOT NULL"
+    varchar entity_type "NOT NULL"
+    uuid entity_id
+    uuid patient_id FK
+    varchar outcome "NOT NULL"
+    jsonb details "NOT NULL"
+    varchar request_id
+    inet ip_address
+    varchar user_agent
+  }
+  patients {
+    uuid id PK "NOT NULL"
+  }
+  users |o--o{ audit_events : "actor_user_id"
+  patients |o--o{ audit_events : "patient_id"
+  users ||--o{ idempotency_keys : "user_id"
+  refresh_tokens |o--o{ refresh_tokens : "replaced_by_id"
+  users ||--o{ refresh_tokens : "user_id"
+  users ||--o{ user_roles : "user_id"

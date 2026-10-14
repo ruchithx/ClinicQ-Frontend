@@ -1,0 +1,19 @@
+%% Prescription lifecycle (prescriptions.status)
+stateDiagram-v2
+  direction TB
+  [*] --> PENDING: consultation submitted /<br/>prescription added
+  PENDING --> IN_PROGRESS: start (pharmacist)
+  PENDING --> DISPENSED: dispense (pharmacist)
+  IN_PROGRESS --> DISPENSED: dispense (pharmacist)
+  PENDING --> CANCELLED: cancel (prescribing doctor / pharmacist, reason)
+  IN_PROGRESS --> CANCELLED: cancel (prescribing doctor / pharmacist, reason)
+  DISPENSED --> [*]
+  CANCELLED --> [*]
+  note right of DISPENSED
+    terminal - dispensing outcome FULL or PARTIAL,
+    exactly one dispensings row
+  end note
+  note right of CANCELLED
+    terminal - may be superseded
+    by a re-issued prescription
+  end note

@@ -1,0 +1,28 @@
+%% Workflow D: public queue display with ETag polling
+sequenceDiagram
+  autonumber
+  actor V as Visitor / waiting-room TV
+  participant FE as Next.js /public/queue/[id]
+  participant RP as Reverse proxy
+  participant API as Spring Boot API (public controller)
+  participant DB as PostgreSQL
+
+  V->>FE: Open /public/queue/{sid}
+  FE->>RP: GET /api/v1/public/queue-sessions/{sid}
+  RP->>API: forward (rate limit 120/min/IP)
+  API->>DB: read-only tx: session row + WAITING/SERVING numbers + counts
+  API-->>FE: 200 PublicQueueStatus, ETag W/"sid-41"
+  FE-->>V: NOW SERVING 6 - waiting 7, 8, 9
+  loop every NEXT_PUBLIC_QUEUE_POLL_INTERVAL_MS (5 s)
+    FE->>API: GET ... If-None-Match: W/"sid-41"
+    API->>DB: SELECT version FROM queue_sessions WHERE id = sid
+    alt version unchanged
+      API-->>FE: 304 Not Modified (no body)
+    else queue changed (booking, call, skip ...)
+      API->>DB: build PublicQueueStatus
+      API-->>FE: 200 PublicQueueStatus, ETag W/"sid-42"
+      FE-->>V: animate new number, aria-live announcement
+    end
+  end
+  Note over FE: 3 consecutive failures -> "Connection lost - showing last update at 10:42" banner, keeps retrying
+  Note over API: Response DTO has only numbers, counts, status, label - never names, phones, patient numbers or clinical data

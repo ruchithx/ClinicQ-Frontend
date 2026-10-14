@@ -1,0 +1,34 @@
+%% Authentication and authorisation flow
+sequenceDiagram
+  autonumber
+  actor U as Staff user
+  participant FE as Next.js (browser)
+  participant API as Spring Boot API
+  participant DB as PostgreSQL
+
+  U->>FE: username + password
+  FE->>API: POST /api/v1/auth/login
+  API->>DB: load user + roles, BCrypt verify, lockout check
+  API->>DB: INSERT refresh_tokens(family F, hash(R1)), audit
+  API-->>FE: 200 {accessToken A1 (15 min), user} + Set-Cookie dms_refresh=R1 (HttpOnly, SameSite=Strict, Path=/api/v1/auth)
+  FE->>FE: keep A1 in memory only (never localStorage)
+  FE->>API: GET /api/v1/patients/... Authorization: Bearer A1
+  API->>API: verify signature, iss, exp, roles -> GrantedAuthorities
+  API->>API: @PreAuthorize role check + ownership rules in service
+  API-->>FE: 200 data (or 403 FORBIDDEN + ACCESS_DENIED audit)
+  Note over FE,API: 15 minutes later
+  FE->>API: GET ... Bearer A1 (expired)
+  API-->>FE: 401 TOKEN_EXPIRED
+  FE->>API: POST /api/v1/auth/refresh (cookie R1, X-Requested-With)
+  API->>DB: SELECT token FOR UPDATE, valid & not rotated?
+  API->>DB: mark R1 rotated, INSERT R2 (same family, same absolute expiry)
+  API-->>FE: 200 {accessToken A2} + Set-Cookie dms_refresh=R2
+  FE->>API: retry original request with A2
+  alt R1 presented again > 30 s after rotation
+    API->>DB: revoke family F (REUSE_DETECTED), audit
+    API-->>FE: 401 SESSION_REVOKED -> login screen
+  end
+  U->>FE: Logout (or 30 min idle)
+  FE->>API: POST /api/v1/auth/logout
+  API->>DB: revoke family F
+  API-->>FE: 204 + clear cookie, FE clears query cache

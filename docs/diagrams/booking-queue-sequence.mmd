@@ -1,0 +1,48 @@
+%% Workflows C and E: telephone booking and calling the next patient
+sequenceDiagram
+  autonumber
+  actor C as Caller (patient)
+  actor S as Staff (pharmacist/doctor)
+  participant FE as Next.js (staff UI)
+  participant API as Spring Boot API
+  participant DB as PostgreSQL
+  actor D as Doctor
+
+  %% ---- body ----
+  C->>S: Phones to request a booking
+  S->>FE: /bookings/new - session, name, phone
+  FE->>API: POST /queue-sessions/{sid}/entries (Idempotency-Key K)
+  activate API
+  API->>DB: BEGIN, INSERT idempotency_keys(user, K)
+  API->>DB: SELECT * FROM queue_sessions WHERE id = sid FOR UPDATE
+  Note right of DB: concurrent bookings for sid wait here
+  API->>DB: status in (SCHEDULED, OPEN)? last_issued_number < 999?
+  API->>DB: active entry with same phone? (else 409 DUPLICATE_BOOKING)
+  API->>DB: UPDATE queue_sessions SET last_issued_number = n + 1, version = version + 1
+  API->>DB: INSERT queue_entries(queue_number = n + 1, WAITING)
+  API->>DB: INSERT audit_events, COMMIT
+  API-->>FE: 201 QueueEntryResponse(queueNumber = n + 1)
+  deactivate API
+  FE-->>S: Large "Your number is 6"
+  S-->>C: "Your number is 6"
+
+  %% ---- part 2 ----
+  Note over D,FE: Doctor dashboard shows currentServingNumber = 5 (polled every 5 s)
+  D->>FE: Click "Complete & call next"
+  FE->>FE: disable button, read currentServingNumber = 5
+  FE->>API: POST /queue-sessions/{sid}/call-next {expectedLastCalledNumber: 5, completeCurrentEntryId: e5}
+  activate API
+  API->>DB: BEGIN, SELECT queue_sessions FOR UPDATE
+  alt last_called_number = 5
+    API->>DB: UPDATE entry e5 SET status = COMPLETED
+    API->>DB: SELECT lowest WAITING entry (number 6)
+    API->>DB: UPDATE entry SET status = SERVING, called_at = now()
+    API->>DB: UPDATE queue_sessions SET last_called_number = 6, version + 1
+    API->>DB: INSERT audit_events, COMMIT
+    API-->>FE: 200 {calledEntry: 6, completedEntry: 5, session}
+  else someone already advanced (double click / second doctor)
+    API->>DB: ROLLBACK
+    API-->>FE: 409 QUEUE_STATE_CHANGED {currentServingNumber: 6}
+    FE->>API: GET /queue-sessions/{sid} (refetch)
+  end
+  deactivate API

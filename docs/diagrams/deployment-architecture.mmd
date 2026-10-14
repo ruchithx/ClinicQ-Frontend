@@ -1,0 +1,33 @@
+%% Production deployment (single site) - proposed reference
+flowchart TB
+  subgraph Internet["Internet / clinic LAN"]
+    U["Staff browsers"]
+    P["Public displays and phones"]
+  end
+  subgraph Host["Production host or VM (Docker Engine, Linux)"]
+    direction TB
+    subgraph Net["docker network: dms-internal"]
+      RP["caddy:2 or nginx<br/>:443 public, :80 -> 443<br/>TLS certificates (ACME)"]
+      FE["dms-frontend<br/>Next.js standalone<br/>:3000 (internal)"]
+      BE1["dms-backend replica 1<br/>:8080 API + actuator (internal)"]
+      BE2["dms-backend replica 2<br/>(optional, same image)"]
+      DB[("postgres:16<br/>:5432 internal only<br/>volume: pgdata")]
+    end
+    MON["Monitoring<br/>uptime probe on /actuator/health/readiness<br/>Prometheus scrape /actuator/prometheus (optional)"]
+  end
+  OFF[("Off-site encrypted backup storage<br/>daily base backup + WAL, 35 days")]
+  SECRETS["Secret store / .env with 0600 permissions<br/>DB_PASSWORD, APP_JWT_SECRET"]
+
+  U -->|HTTPS 443| RP
+  P -->|HTTPS 443| RP
+  RP -->|"/"| FE
+  RP -->|"/api/*"| BE1
+  RP -->|"/api/*"| BE2
+  FE -. "server-side rewrite (only if no proxy)" .-> BE1
+  BE1 -->|JDBC| DB
+  BE2 -->|JDBC| DB
+  DB -->|WAL archive| OFF
+  SECRETS -. env .-> BE1
+  SECRETS -. env .-> BE2
+  SECRETS -. env .-> DB
+  MON -.-> BE1

@@ -1,0 +1,43 @@
+%% High-level system architecture - Dispensary Management System v1.0
+flowchart TB
+  subgraph Clients["Clients (browsers)"]
+    DOC["Doctor workstation<br/>/doctor/*"]
+    PHA["Pharmacy counter<br/>/pharmacist/*"]
+    ADM["Admin<br/>/admin/*"]
+    TV["Waiting-room display<br/>/public/queue/:id"]
+    PHN["Patient phone<br/>/public/queue"]
+  end
+
+  subgraph Edge["Reverse proxy (HTTPS, TLS termination)"]
+    RP["Nginx / Caddy<br/>/ -> frontend<br/>/api/* -> backend<br/>rate limit, security headers"]
+  end
+
+  subgraph FE["Next.js 16 frontend (Node.js)"]
+    APP["App Router pages<br/>React 19 + shadcn/ui"]
+    RW["Rewrite /api/* -> API_PROXY_TARGET<br/>(local dev without proxy)"]
+  end
+
+  subgraph BE["Spring Boot 4 modular monolith (stateless)"]
+    SEC["Spring Security<br/>JWT resource server,<br/>role checks, rate limits"]
+    CTRL["REST controllers /api/v1"]
+    SVC["Application services<br/>auth, user, patient, consultation,<br/>prescription, pharmacy, medicine,<br/>queue, public-queue, audit"]
+    QM["Queue manager<br/>(row-locked numbering,<br/>compare-and-set call-next)"]
+    JOBS["Scheduled jobs<br/>retention, auto-close"]
+    REPO["Spring Data JPA repositories"]
+  end
+
+  DB[("PostgreSQL 16<br/>Flyway-managed schema")]
+  BK[("Encrypted backups<br/>base backup + WAL")]
+
+  DOC & PHA & ADM -->|"HTTPS: pages + JSON (Bearer JWT,<br/>HttpOnly refresh cookie)"| RP
+  TV & PHN -->|"HTTPS polling every 5 s<br/>(ETag / 304)"| RP
+  RP --> APP
+  RP -->|"/api/*"| SEC
+  APP -. "dev only" .-> RW -.-> SEC
+  SEC --> CTRL --> SVC
+  SVC --> QM
+  SVC --> REPO
+  QM --> REPO
+  JOBS --> REPO
+  REPO -->|"JDBC (HikariCP)"| DB
+  DB -->|"pg_basebackup + WAL archive"| BK

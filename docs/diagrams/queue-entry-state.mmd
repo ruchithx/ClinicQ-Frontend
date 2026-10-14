@@ -1,0 +1,15 @@
+%% Queue entry lifecycle (queue_entries.status) - separate from prescription statuses
+stateDiagram-v2
+  direction TB
+  [*] --> WAITING: booking created (number n)
+  WAITING --> SERVING: call-next / call (doctor)
+  WAITING --> CANCELLED: cancel (staff, reason)
+  SERVING --> COMPLETED: complete / call-next with completeCurrentEntryId
+  SERVING --> SKIPPED: skip - not present (doctor)
+  SKIPPED --> WAITING: requeue - arrived late (keeps number n)
+  COMPLETED --> [*]
+  CANCELLED --> [*]
+  note right of SKIPPED
+    session close (force): WAITING -> CANCELLED,
+    SERVING -> COMPLETED; SKIPPED stays SKIPPED
+  end note
