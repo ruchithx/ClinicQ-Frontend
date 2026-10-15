@@ -37,13 +37,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/doctor/dashboard' as Route, label: messages.nav.dashboard, icon: <LayoutDashboard className="h-4 w-4" />, roles: ['DOCTOR'] },
-  { href: '/doctor/patients/search' as Route, label: messages.nav.patients, icon: <Users className="h-4 w-4" />, roles: ['DOCTOR'] },
-  { href: '/doctor/prescriptions' as Route, label: messages.nav.myPrescriptions, icon: <FileText className="h-4 w-4" />, roles: ['DOCTOR'] },
-  { href: '/pharmacist/dashboard' as Route, label: messages.nav.dashboard, icon: <LayoutDashboard className="h-4 w-4" />, roles: ['PHARMACIST'] },
-  { href: '/pharmacist/prescriptions' as Route, label: messages.nav.prescriptions, icon: <ClipboardList className="h-4 w-4" />, roles: ['PHARMACIST'] },
-  { href: '/queue' as Route, label: messages.nav.queue, icon: <ListOrdered className="h-4 w-4" />, roles: ['DOCTOR', 'PHARMACIST'] },
-  { href: '/bookings/new' as Route, label: messages.nav.newBooking, icon: <Phone className="h-4 w-4" />, roles: ['DOCTOR', 'PHARMACIST'] },
+  { href: '/doctor/dashboard' as Route, label: messages.nav.dashboard, icon: <LayoutDashboard className="h-4 w-4" />, roles: ['DOCTOR','ADMIN'] },
+  { href: '/doctor/patients/search' as Route, label: messages.nav.patients, icon: <Users className="h-4 w-4" />, roles: ['DOCTOR','ADMIN'] },
+  { href: '/doctor/prescriptions' as Route, label: messages.nav.myPrescriptions, icon: <FileText className="h-4 w-4" />, roles: ['DOCTOR','ADMIN'] },
+  { href: '/pharmacist/dashboard' as Route, label: messages.nav.dashboard, icon: <LayoutDashboard className="h-4 w-4" />, roles: ['PHARMACIST','ADMIN'] },
+  { href: '/pharmacist/prescriptions' as Route, label: messages.nav.prescriptions, icon: <ClipboardList className="h-4 w-4" />, roles: ['PHARMACIST','ADMIN'] },
+  { href: '/queue' as Route, label: messages.nav.queue, icon: <ListOrdered className="h-4 w-4" />, roles: ['DOCTOR', 'PHARMACIST', 'ADMIN'] },
+  { href: '/bookings/new' as Route, label: messages.nav.newBooking, icon: <Phone className="h-4 w-4" />, roles: ['DOCTOR', 'PHARMACIST', 'ADMIN'] },
   { href: '/medicines' as Route, label: messages.nav.medicines, icon: <Pill className="h-4 w-4" />, roles: ['PHARMACIST', 'ADMIN'] },
   { href: '/admin/users' as Route, label: messages.nav.users, icon: <Users className="h-4 w-4" />, roles: ['ADMIN'] },
   { href: '/admin/audit-events' as Route, label: messages.nav.auditLog, icon: <ShieldCheck className="h-4 w-4" />, roles: ['ADMIN'] },

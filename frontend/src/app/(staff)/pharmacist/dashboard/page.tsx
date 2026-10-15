@@ -3,7 +3,7 @@ import { PharmacistDashboard } from '@/features/pharmacy/PharmacistDashboard';
 
 export default function Page() {
   return (
-    <RequireAuth requiredRoles={['PHARMACIST']}>
+    <RequireAuth requiredRoles={['PHARMACIST', 'ADMIN']}>
       <PharmacistDashboard />
     </RequireAuth>
   );

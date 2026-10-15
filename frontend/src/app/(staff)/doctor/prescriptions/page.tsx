@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'My Prescriptions' };
 
 export default function DoctorPrescriptionsPage() {
   return (
-    <RequireAuth requiredRoles={['DOCTOR']}>
+    <RequireAuth requiredRoles={['DOCTOR', 'ADMIN']}>
       <div className="p-6">
         <h1 className="mb-6 text-2xl font-bold">My Prescriptions</h1>
         <PrescriptionList />

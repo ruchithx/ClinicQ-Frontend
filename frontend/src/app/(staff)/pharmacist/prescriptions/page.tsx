@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/PageHeader';
 
 export default function Page() {
   return (
-    <RequireAuth requiredRoles={['PHARMACIST']}>
+    <RequireAuth requiredRoles={['PHARMACIST','ADMIN']}>
       <div className="space-y-6">
         <PageHeader title="Prescriptions" />
         <PharmacistPrescriptionList />

@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'New Booking' };
 
 export default function NewBookingPage() {
   return (
-    <RequireAuth requiredRoles={['DOCTOR', 'PHARMACIST']}>
+    <RequireAuth requiredRoles={['DOCTOR', 'PHARMACIST', 'ADMIN']}>
       <div className="p-6">
         <h1 className="mb-6 text-2xl font-bold">New Booking</h1>
         <div className="max-w-lg">

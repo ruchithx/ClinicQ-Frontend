@@ -8,7 +8,7 @@ interface Props {
 export default async function Page({ params }: Props) {
   const { prescriptionId } = await params;
   return (
-    <RequireAuth requiredRoles={['PHARMACIST']}>
+    <RequireAuth requiredRoles={['PHARMACIST', 'ADMIN']}>
       <PharmacistPrescriptionDetail prescriptionId={prescriptionId} />
     </RequireAuth>
   );

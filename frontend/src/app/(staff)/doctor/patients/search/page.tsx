@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Patient Search' };
 
 export default function PatientSearchPage() {
   return (
-    <RequireAuth requiredRoles={['DOCTOR']}>
+    <RequireAuth requiredRoles={['DOCTOR', 'ADMIN']}>
       <div className="p-6">
         <h1 className="mb-6 text-2xl font-bold">Patients</h1>
         <PatientSearchForm />

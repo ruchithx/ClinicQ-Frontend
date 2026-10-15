@@ -11,7 +11,7 @@ interface Props {
 export default async function PatientDetailPage({ params }: Props) {
   const { patientId } = await params;
   return (
-    <RequireAuth requiredRoles={['DOCTOR']}>
+    <RequireAuth requiredRoles={['DOCTOR', 'ADMIN']}>
       <div className="p-6">
         <PatientDetail patientId={patientId} />
       </div>
